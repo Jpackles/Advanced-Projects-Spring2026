@@ -68,6 +68,7 @@ export default function OfficeHours() {
   const [editId, setEditId] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [filter, setFilter] = useState("");
+  const [attested, setAttested] = useState(false); // tracks whether student has checked the checkbox
 
   useEffect(() => {
     localStorage.setItem("cgps_officeHours", JSON.stringify(entries));
@@ -137,7 +138,6 @@ export default function OfficeHours() {
         input[type=time]::-webkit-calendar-picker-indicator { opacity: 0.4; }
       `}</style>
 
-      {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #1e2e52 0%, #2d3f6b 60%, #1a5fa8 100%)", boxShadow: "0 2px 16px rgba(30,46,82,0.18)" }}>
         <div style={{ height: 4, background: "#29b6e8" }} />
         <div style={{ maxWidth: 780, margin: "0 auto", padding: "22px 28px 0" }}>
@@ -179,59 +179,101 @@ export default function OfficeHours() {
                 style={{ ...inputStyle, width: 240, boxShadow: "0 1px 4px rgba(45,63,107,0.07)" }} />
             </div>
 
-            {Object.keys(grouped).length === 0 && (
-              <div style={{ background: "#fff", border: "1.5px dashed #c8d4e8", borderRadius: 14, padding: "56px 24px", textAlign: "center" }}>
-                <div style={{ fontSize: 38, marginBottom: 12 }}>📭</div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: "#7a8aaa" }}>No office hours posted yet</div>
-                <div style={{ fontSize: 13, marginTop: 6, color: "#b0bcd0" }}>Teachers can add hours using the Teacher Form tab</div>
+            {/* Attestation checkbox — student must check this before seeing the schedule */}
+            <div style={{
+              background: "#fff",
+              border: `1.5px solid ${attested ? "#29b6e8" : "#d0d9e8"}`,
+              borderRadius: 12,
+              padding: "16px 20px",
+              marginBottom: 24,
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              boxShadow: "0 1px 6px rgba(45,63,107,0.06)",
+              transition: "border-color 0.2s",
+            }}>
+              <input
+                type="checkbox"
+                id="attest"
+                checked={attested}
+                onChange={e => setAttested(e.target.checked)} // updates attested state when clicked
+                style={{ width: 18, height: 18, accentColor: "#29b6e8", cursor: "pointer", flexShrink: 0 }}
+              />
+              <label htmlFor="attest" style={{ fontSize: 14, color: "#1e2e52", fontWeight: 600, cursor: "pointer" }}>
+                I confirm I am not currently in class and am free to visit office hours
+              </label>
+            </div>
+
+            {/* only shows the schedule if the checkbox is checked */}
+            {!attested ? (
+              <div style={{
+                background: "#fff",
+                border: "1.5px dashed #c8d4e8",
+                borderRadius: 14,
+                padding: "40px 24px",
+                textAlign: "center",
+                color: "#b0bcd0",
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>☝️</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#7a8aaa" }}>Please check the box above to view office hours</div>
+              </div>
+            ) : (
+              <div>
+                {Object.keys(grouped).length === 0 && (
+                  <div style={{ background: "#fff", border: "1.5px dashed #c8d4e8", borderRadius: 14, padding: "56px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 38, marginBottom: 12 }}>📭</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: "#7a8aaa" }}>No office hours posted yet</div>
+                    <div style={{ fontSize: 13, marginTop: 6, color: "#b0bcd0" }}>Teachers can add hours using the Teacher Form tab</div>
+                  </div>
+                )}
+
+                {DAYS.filter(d => grouped[d]).map(day => (
+                  <div key={day} style={{ marginBottom: 28 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <Badge day={day} />
+                      <div style={{ flex: 1, height: 1, background: "#d0d9e8" }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {grouped[day].map((entry: any) => (
+                        <div key={entry.id} className="entry-card" style={{
+                          background: "#fff", border: "1.5px solid #e0e8f4", borderRadius: 12,
+                          padding: "16px 20px", display: "flex", alignItems: "center",
+                          justifyContent: "space-between", flexWrap: "wrap", gap: 14,
+                          boxShadow: "0 1px 6px rgba(45,63,107,0.06)",
+                        }}>
+                          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                            <div style={{
+                              width: 44, height: 44, borderRadius: 10,
+                              background: "linear-gradient(135deg, #e8eef8, #d0ddef)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 20, flexShrink: 0, border: "1.5px solid #c8d4e8",
+                            }}>👤</div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 15, color: "#1e2e52" }}>{entry.name}</div>
+                              <div style={{ fontSize: 13, color: "#7a8aaa", marginTop: 2 }}>{entry.class}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
+                            <div>
+                              <div style={{ fontSize: 10, color: "#b0bcd0", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 700 }}>Time</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a5fa8", marginTop: 2 }}>{formatTime(entry.start)} – {formatTime(entry.end)}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: "#b0bcd0", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 700 }}>Room</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: "#29b6e8", marginTop: 2 }}>{entry.room}</div>
+                            </div>
+                            <button onClick={() => handleEdit(entry)} style={{
+                              background: "#f0f3f8", color: "#7a8aaa", border: "1.5px solid #d0d9e8",
+                              borderRadius: 7, padding: "6px 14px", fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif",
+                            }}>Edit</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-
-            {DAYS.filter(d => grouped[d]).map(day => (
-              <div key={day} style={{ marginBottom: 28 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <Badge day={day} />
-                  <div style={{ flex: 1, height: 1, background: "#d0d9e8" }} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {grouped[day].map((entry: any) => (
-                    <div key={entry.id} className="entry-card" style={{
-                      background: "#fff", border: "1.5px solid #e0e8f4", borderRadius: 12,
-                      padding: "16px 20px", display: "flex", alignItems: "center",
-                      justifyContent: "space-between", flexWrap: "wrap", gap: 14,
-                      boxShadow: "0 1px 6px rgba(45,63,107,0.06)",
-                    }}>
-                      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                        <div style={{
-                          width: 44, height: 44, borderRadius: 10,
-                          background: "linear-gradient(135deg, #e8eef8, #d0ddef)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 20, flexShrink: 0, border: "1.5px solid #c8d4e8",
-                        }}>👤</div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 15, color: "#1e2e52" }}>{entry.name}</div>
-                          <div style={{ fontSize: 13, color: "#7a8aaa", marginTop: 2 }}>{entry.class}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: "#b0bcd0", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 700 }}>Time</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#1a5fa8", marginTop: 2 }}>{formatTime(entry.start)} – {formatTime(entry.end)}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: "#b0bcd0", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 700 }}>Room</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#29b6e8", marginTop: 2 }}>{entry.room}</div>
-                        </div>
-                        <button onClick={() => handleEdit(entry)} style={{
-                          background: "#f0f3f8", color: "#7a8aaa", border: "1.5px solid #d0d9e8",
-                          borderRadius: 7, padding: "6px 14px", fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif",
-                        }}>Edit</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         )}
 
